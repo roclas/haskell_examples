@@ -1,39 +1,34 @@
 module Main where
 
-sumar(a,b)=a+b
-restar(a,b)=a-b
-multiplicar(a,b)=a*b
-dividir(a,b)=a/b
-f_operadores= zip [ "+","-","*","/"] [ sumar,restar,multiplicar,dividir ]
 first(x,_) = x
-second(_,x) = x
+second(_,y) = y
+f_operadores= zip ["+","-","*","/"] [ \(x,y)->x+y,\(x,y)->x-y,\(x,y)->x*y,\(x,y)->x/y]
 get_funct(symbol)=head(map (second) (filter (\i->symbol==first(i)) f_operadores))
 
---combinaciones (con repetición de una lista tomados de n en n)
---y permutaciones de una lista
 combinar n = sequence . replicate n
-permutar(l)=case(l)of{_:_:_->l>>=(\i->map(i:)(permutar$filter(i/=)l));_->[l]}
+permutar l =case(l)of{_:_:_->l>>=(\i->map(i:)(permutar$filter(i/=)l));_->[l]}
 
 --aplica lista de operaciones a lista de elementos
-aplicar([],a:b,objetivo,historia)=(a,historia)
-aplicar(o:operandos,a:b:resto,objetivo,historia)=
-	let r=get_funct(o)(a,b)
-	in 
-		if(objetivo==r) then (r,historia++o++show b)
-		else aplicar(operandos,r:resto,objetivo,historia++o++show b)
+aplicar(_,a:[],objetivo,historia)=(a,historia++show a)
+aplicar(o:operandos,a:resto,objetivo,historia)=
+	let 	r=aplicar(operandos,resto,objetivo,historia)
+		ar=get_funct(o)(a,first(r))
+	in	if(first(r)==objetivo) then (first(r),second(r))
+		else (ar,historia++"("++show a++o++second(r)++")")
 
 --aplica una lista de operaciones a varias listas de elementos
-reaplicar(_,[],objetivo,hist)=([],hist)
+reaplicar(_,[],objetivo,hist)=([],[])
 reaplicar(operandos,e:l_elementos,objetivo,hist)=
-	let 
-		a=aplicar(operandos,e,objetivo,hist)
+	let 	a=aplicar(operandos,e,objetivo,hist)
 		r=reaplicar(operandos,l_elementos,objetivo,hist)
-	in ([first(a)]++first(r),second(a)++second(r))
+	in ([first(a)]++first(r),second(a):second(r))
 
 --aplica varias listas de operaciones a cada una de varias listas de elementos
-re_reaplicar([],_,objetivo,hist)=[]
+re_reaplicar([],_,objetivo,hist)=([],[])
 re_reaplicar(o:l_operandos,l_elementos,objetivo,hist)=
-	first(reaplicar(o,l_elementos,objetivo,hist))++re_reaplicar(l_operandos,l_elementos,objetivo,hist)
+	(first(reaplicar(o,l_elementos,objetivo,hist))++first(re_reaplicar(l_operandos,l_elementos,objetivo,hist)),
+	second(reaplicar(o,l_elementos,objetivo,hist))++second(re_reaplicar(l_operandos,l_elementos,objetivo,hist)))
 
-
-resultado=re_reaplicar([["+","-"],["+","+"]],[[2,3,4],[1,1,2]],9,"")
+menor_distancia d (a,b) (y,z) =if(abs(d-a)<abs(d-y)) then (a,b) else (y,z)
+mas_cercano(d,(resultados,historicos))= foldr (menor_distancia d) (9999,"") (zip resultados historicos)
+calcular(objetivo,numeros)=mas_cercano(objetivo,re_reaplicar(combinar (length(numeros)-1) ["+","-","*","/"], permutar numeros, objetivo,"" ))
